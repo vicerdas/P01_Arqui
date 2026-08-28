@@ -1,2 +1,15 @@
-# P01_Arqui
-Proyecto #01- Comparación de rendimiento entre una implementación escalar y una vectorizada (AVX2) en NASM x86-64 de un normalizador estadístico (z-score). Driver en C + kernels en ensamblador, benchmarking con clock_gettime/perf, y verificación funcional con GDB.
+.
+├── Makefile
+├── include/
+│   └── stats.h              # Firmas compartidas por ambas versiones
+├── src/
+│   └── driver.c             # Programa principal (E/S, timing, impresión)
+├── asm/
+│   ├── scalar/
+│   │   └── stats_scalar.asm # Versión escalar (SSE escalar)
+│   └── vector/
+│       └── stats_vector.asm # Versión vectorial (AVX2)
+├── tools/
+│   ├── gen_input.py         # Genera archivos de entrada de prueba
+│   └── verify_reference.py  # Verifica resultados contra referencia en Python puro
+└── data/                    # Se crea al compilar: entradas/salidas .dat
