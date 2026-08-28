@@ -1,4 +1,4 @@
-.
+```text
 ├── Makefile
 ├── include/
 │   └── stats.h              # Firmas compartidas por ambas versiones
