@@ -1,0 +1,16 @@
+
+ Performance counter stats for './bin/norm_scalar data/bench_10000000.dat data/out.dat 5':
+
+       590,547,873      cpu_atom/cycles/                                                        (13.25%)
+       794,790,081      cpu_core/cycles/                                                        (86.75%)
+       492,401,133      cpu_atom/instructions/           #    0.83  insn per cycle              (13.25%)
+     1,829,245,961      cpu_core/instructions/           #    2.30  insn per cycle              (86.75%)
+        22,235,045      cpu_atom/cache-misses/                                                  (13.25%)
+        12,203,483      cpu_core/cache-misses/                                                  (86.75%)
+
+       0.178041381 seconds time elapsed
+
+       0.123808000 seconds user
+       0.041599000 seconds sys
+
+

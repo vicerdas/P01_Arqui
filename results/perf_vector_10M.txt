@@ -1,0 +1,16 @@
+
+ Performance counter stats for './bin/norm_vector data/bench_10000000.dat data/out.dat 5':
+
+       294,746,201      cpu_atom/cycles/                                                        (8.96%)
+       394,771,808      cpu_core/cycles/                                                        (91.04%)
+       243,868,402      cpu_atom/instructions/           #    0.83  insn per cycle              (8.96%)
+       347,348,050      cpu_core/instructions/           #    0.88  insn per cycle              (91.04%)
+         4,855,271      cpu_atom/cache-misses/                                                  (8.96%)
+        15,345,059      cpu_core/cache-misses/                                                  (91.04%)
+
+       0.093768192 seconds time elapsed
+
+       0.046897000 seconds user
+       0.035921000 seconds sys
+
+
