@@ -128,12 +128,80 @@ compute_stats:
     vdivss  xmm0, xmm0, xmm1     ; xmm0 = media = suma / n
     vmovss  [r13], xmm0          ; guarda la media en *mean
 
-    ;  placeholder temporal 
-    vxorps  xmm2, xmm2, xmm2
-    vmovss  [r14], xmm2
-    vmovss  [r15], xmm2
-    vmovss  [rbp], xmm2
-    ;  fin placeholder 
+    ;  Pasada 2: varianza, minimo y maximo  
+    mov     ecx, r12d
+    and     ecx, ~7                 ; ecx = n redondeado hacia abajo, multiplo de 8
+    xor     eax, eax                ; eax = i = 0
+
+    vbroadcastss ymm1, xmm0         ; ymm1 = media repetida en los 8 carriles
+    vxorps  ymm2, ymm2, ymm2        ; ymm2 = acumulador de sum((x-mean)^2) = 0
+
+    mov     edx, 0x7F7FFFFF         ; patron de bits de +FLT_MAX
+    vmovd   xmm3, edx
+    vbroadcastss ymm3, xmm3         ; ymm3 = acumulador de minimos, inicia en +FLT_MAX
+
+    mov     edx, 0xFF7FFFFF         ; patron de bits de -FLT_MAX
+    vmovd   xmm4, edx
+    vbroadcastss ymm4, xmm4         ; ymm4 = acumulador de maximos, inicia en -FLT_MAX
+
+    test    ecx, ecx
+    jle     .cs_reduce
+
+.cs_vec_loop:
+    cmp     eax, ecx
+    jge     .cs_reduce
+    vmovups ymm5, [rbx + rax*4]     ; carga 8 floats
+    vsubps  ymm6, ymm5, ymm1        ; ymm6 = x - mean
+    vmulps  ymm6, ymm6, ymm6        ; ymm6 = (x-mean)^2
+    vaddps  ymm2, ymm2, ymm6        ; acumula suma de cuadrados
+    vminps  ymm3, ymm3, ymm5        ; actualiza minimos por carril
+    vmaxps  ymm4, ymm4, ymm5        ; actualiza maximos por carril
+    add     eax, 8
+    jmp     .cs_vec_loop
+
+.cs_reduce:
+    ; reduccion horizontal de la suma de cuadrados (igual que sum_array) 
+    vextractf128 xmm7, ymm2, 1
+    vaddps  xmm2, xmm2, xmm7
+    vhaddps xmm2, xmm2, xmm2
+    vhaddps xmm2, xmm2, xmm2        ; xmm2[0] = suma total de cuadrados
+
+    ;  reduccion horizontal del minimo (8 carriles -> 1) 
+    vextractf128 xmm7, ymm3, 1
+    vminps  xmm3, xmm3, xmm7        ; 4 minimos parciales
+    vshufps xmm7, xmm3, xmm3, 0xEE
+    vminps  xmm3, xmm3, xmm7        ; 2 minimos parciales
+    vshufps xmm7, xmm3, xmm3, 0x55
+    vminps  xmm3, xmm3, xmm7        ; xmm3[0] = minimo final
+
+    ; reduccion horizontal del maximo (mismo patron, con vmaxps) 
+    vextractf128 xmm7, ymm4, 1
+    vmaxps  xmm4, xmm4, xmm7
+    vshufps xmm7, xmm4, xmm4, 0xEE
+    vmaxps  xmm4, xmm4, xmm7
+    vshufps xmm7, xmm4, xmm4, 0x55
+    vmaxps  xmm4, xmm4, xmm7        ; xmm4[0] = maximo final
+
+.cs_scalar_tail:
+    ; elementos sobrantes (n % 8), van uno a la vez 
+    cmp     eax, r12d
+    jge     .cs_finish
+    vmovss  xmm5, [rbx + rax*4]     ; x = arr[i]
+    vsubss  xmm6, xmm5, xmm0        ; x - mean
+    vmulss  xmm6, xmm6, xmm6        ; (x-mean)^2
+    vaddss  xmm2, xmm2, xmm6
+    vminss  xmm3, xmm3, xmm5
+    vmaxss  xmm4, xmm4, xmm5
+    inc     eax
+    jmp     .cs_scalar_tail
+
+.cs_finish:
+    vcvtsi2ss xmm1, xmm1, r12d      ; xmm1 = (float) n
+    vdivss  xmm2, xmm2, xmm1        ; xmm2 = varianza = suma_cuadrados / n
+
+    vmovss  [r14], xmm2             ; *var = varianza
+    vmovss  [r15], xmm3             ; *min = minimo
+    vmovss  [rbp], xmm4             ; *max = maximo 
 
 .cs_done:
     pop     r15
