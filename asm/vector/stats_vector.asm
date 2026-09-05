@@ -232,6 +232,67 @@ compute_stats:
 ;     en sum_array.
 ;   - 'vzeroupper' antes del 'ret'.
 ; ---------------------------------------------------------------
+
 normalize_array:
-    ; TODO: implementar
+    vbroadcastss ymm2, xmm0         ; ymm2 = mean repetida en los 8 carriles
+    vbroadcastss ymm3, xmm1         ; ymm3 = stddev repetida en los 8 carriles
+
+    vxorps  xmm4, xmm4, xmm4
+    vucomiss xmm1, xmm4             ; compara stddev contra 0.0
+    je      .na_copy                ; si stddev == 0.0 -> copiar tal cual
+
+    mov     ecx, edx
+    and     ecx, ~7                 ; ecx = n redondeado hacia abajo, multiplo de 8
+    xor     eax, eax
+    test    ecx, ecx
+    jle     .na_scalar_tail
+
+.na_vec_loop:
+    cmp     eax, ecx
+    jge     .na_scalar_tail
+    vmovups ymm5, [rdi + rax*4]     ; carga 8 floats de entrada
+    vsubps  ymm5, ymm5, ymm2        ; x - mean
+    vdivps  ymm5, ymm5, ymm3        ; (x - mean) / stddev
+    vmovups [rsi + rax*4], ymm5     ; guarda 8 floats de salida
+    add     eax, 8
+    jmp     .na_vec_loop
+
+.na_scalar_tail:
+    ;  elementos sobrantes (n % 8), uno por uno
+    cmp     eax, edx
+    jge     .na_done
+    vmovss  xmm5, [rdi + rax*4]
+    vsubss  xmm5, xmm5, xmm0
+    vdivss  xmm5, xmm5, xmm1
+    vmovss  [rsi + rax*4], xmm5
+    inc     eax
+    jmp     .na_scalar_tail
+
+.na_done:
+    vzeroupper
     ret
+
+.na_copy:
+    ; caso borde: stddev == 0.0, copiar in[i] a out[i] 
+    xor     eax, eax
+    mov     ecx, edx
+    and     ecx, ~7
+    test    ecx, ecx
+    jle     .na_copy_tail
+
+.na_copy_loop:
+    cmp     eax, ecx
+    jge     .na_copy_tail
+    vmovups ymm6, [rdi + rax*4]
+    vmovups [rsi + rax*4], ymm6
+    add     eax, 8
+    jmp     .na_copy_loop
+
+.na_copy_tail:
+    cmp     eax, edx
+    jge     .na_done
+    vmovss  xmm6, [rdi + rax*4]
+    vmovss  [rsi + rax*4], xmm6
+    inc     eax
+    jmp     .na_copy_tail
+    
