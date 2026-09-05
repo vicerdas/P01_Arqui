@@ -87,27 +87,60 @@ sum_array:
 ;   5) 'vzeroupper' antes de cualquier 'ret' en una funcion que usa
 ;      registros YMM.
 ; ---------------------------------------------------------------
+
 compute_stats:
     push    rbx
+    push    rbp
     push    r12
     push    r13
     push    r14
     push    r15
 
-    ; TODO: implementar el algoritmo descrito arriba.
+    ; Guarda los argumentos en registros callee-saved porque se va a
+    ; llamar a sum_array, y esa llamada destruye los registros
+    ; caller-saved (rdi, rsi, rdx, rcx, r8, r9, rax, etc.)
+    mov     rbx, rdi        ; rbx = arr
+    mov     r12d, esi       ; r12d = n
+    mov     r13, rdx        ; r13 = mean*
+    mov     r14, rcx        ; r14 = var*
+    mov     r15, r8         ; r15 = min*
+    mov     rbp, r9         ; rbp = max*
 
-    ; --- placeholder temporal: elimine estas lineas al implementar ---
+    ;  Caso borde: n == 0 da como resultado 0.0 en los 4 punteros 
+    test    r12d, r12d
+    jne     .cs_calc_mean
     vxorps  xmm0, xmm0, xmm0
-    vmovss  [rdx], xmm0
-    vmovss  [rcx], xmm0
-    vmovss  [r8], xmm0
-    vmovss  [r9], xmm0
-    ; --- fin placeholder ---
+    vmovss  [r13], xmm0
+    vmovss  [r14], xmm0
+    vmovss  [r15], xmm0
+    vmovss  [rbp], xmm0
+    jmp     .cs_done
 
+.cs_calc_mean:
+    ;  Pasada 1: media = sum_array(arr, n) / n 
+    mov     rdi, rbx
+    mov     esi, r12d
+    sub     rsp, 8          ; alinea la pila a 16 bytes antes del call
+    call    sum_array       ; resultado (la suma) queda en xmm0
+    add     rsp, 8          ; deshace el ajuste de alineacion
+
+    vcvtsi2ss xmm1, xmm1, r12d   ; xmm1 = (float) n
+    vdivss  xmm0, xmm0, xmm1     ; xmm0 = media = suma / n
+    vmovss  [r13], xmm0          ; guarda la media en *mean
+
+    ;  placeholder temporal 
+    vxorps  xmm2, xmm2, xmm2
+    vmovss  [r14], xmm2
+    vmovss  [r15], xmm2
+    vmovss  [rbp], xmm2
+    ;  fin placeholder 
+
+.cs_done:
     pop     r15
     pop     r14
     pop     r13
     pop     r12
+    pop     rbp
     pop     rbx
     vzeroupper
     ret
