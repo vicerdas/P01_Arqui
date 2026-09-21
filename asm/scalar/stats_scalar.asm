@@ -25,16 +25,16 @@
 ; y normalize_array.
 ; ---------------------------------------------------------------
 sum_array:
-    xor     eax, eax           ; eax = i = 0
-    xorps   xmm0, xmm0         ; xmm0 = acumulador = 0.0
+    xor     eax, eax           ; eax = i = 0 Inicializa el contador del bucle 
+    xorps   xmm0, xmm0         ; xmm0 = acumulador = 0.0 Acumula el resultado...
 
 .sum_loop:
-    cmp     eax, esi
-    jge     .sum_done
-    movss   xmm1, [rdi + rax*4]
-    addss   xmm0, xmm1
-    inc     eax
-    jmp     .sum_loop
+    cmp     eax, esi                ; Condición de paro del bucle --> i<n
+    jge     .sum_done               ; Salida del bucle
+    movss   xmm1, [rdi + rax*4]     ; Direccionamiento indexado: rdi (contiene dic mem del inc del array), rax (indice i Rax porque es de 64bits), *4 (Float ocupa 4bytes)
+    addss   xmm0, xmm1              ; Add Scalar Single Se suma el elemento leido (xmm1) al acomulador (xmm0) (xmm0 = xmm0 + xmm1)
+    inc     eax                     ; i++
+    jmp     .sum_loop               ; Devuelve al inicio
 
 .sum_done:
     ret
@@ -67,18 +67,18 @@ sum_array:
 ; void compute_stats(const float *arr, int n, float *mean, float *var, float *min, float *max)
 ; rdi = arr, esi = n, rdx = mean*, rcx = var*, r8 = min*, r9 = max*
 
-compute_stats:
-    push    rbx
-    push    r12
-    push    r13
-    push    r14
-    push    r15
+compute_stats:      ; Prólogo: Respaldar registros 'callee-saved' en la pila para no alterar el entorno de C (ABI System V).
+    push    rbx ; 
+    push    r12 ;
+    push    r13 ;     
+    push    r14 ;
+    push    r15 ;
 
-    ; Caso borde: si n <= 0, escribir 0.0 en todas las salidas y terminar
+                    ; Caso borde: si n <= 0, escribir 0.0 en todas las salidas y terminar
     cmp     esi, 0
     jle     .handle_zero
 
-    ; 1) Guardar argumentos en registros callee-saved ANTES de llamar a sum_array
+                    ; Guardar argumentos en registros callee-saved ANTES de llamar a sum_array
     mov     r12, rdi       ; r12 = puntero a arr
     mov     r13d, esi      ; r13d = n
     mov     r14, rdx       ; r14 = puntero a mean
@@ -86,16 +86,16 @@ compute_stats:
     mov     rbx, r8        ; rbx = puntero a min
     push    r9             ; Guardamos r9 (puntero a max) en la pila 
 
-    ; Llamar a sum_array (rdi y esi ya contienen arr y n correctamente)
+                    ; Llamar a sum_array
     call    sum_array      ; Retorna la suma total en xmm0
-    pop     r9             ; Restauramos el puntero a max en r9
+    pop     r9             ; Restaura el puntero a max en r9
 
-    ; Calcular mean = suma(arr) / n
+                    ;Calcular mean = suma(arr) / n
     cvtsi2ss xmm1, r13d    ; Convertimos el entero 'n' a float en xmm1
     divss   xmm0, xmm1     ; xmm0 = sum / n (media)
     movss   [r14], xmm0    ; Guardamos la media en la direccion apuntada por rdx (ahora r14)
 
-    ; 2 y 3) Recorrer el arreglo para acumular varianza, min y max
+                    ;Recorrer el arreglo para acumular varianza, min y max
     xorps   xmm2, xmm2     ; xmm2 = acumulador de varianza = 0.0
     movss   xmm3, [r12]    ; xmm3 = valor minimo (inicializado con arr[0])
     movss   xmm4, [r12]    ; xmm4 = valor maximo (inicializado con arr[0])
@@ -108,11 +108,11 @@ compute_stats:
 
     movss   xmm5, [r12 + rax*4] ; xmm5 = arr[i]
 
-    ; Actualizar minimo y maximo con instrucciones SSE dedicadas
+                    ;Actualizar minimo y maximo con instrucciones SSE dedicadas
     minss   xmm3, xmm5     ; xmm3 = min(xmm3, arr[i])
     maxss   xmm4, xmm5     ; xmm4 = max(xmm4, arr[i])
 
-    ; Calcular (arr[i] - mean)^2 y acumular
+                    ;Calcular (arr[i] - mean)^2 y acumular
     subss   xmm5, xmm0     ; xmm5 = arr[i] - mean
     mulss   xmm5, xmm5     ; xmm5 = (arr[i] - mean)^2
     addss   xmm2, xmm5     ; var_acc += xmm5
@@ -121,7 +121,7 @@ compute_stats:
     jmp     .stats_loop
 
 .stats_done:
-    ; 4) Guardar los resultados finales
+                    ;Guardar los resultados finales
     divss   xmm2, xmm1     ; Varianza poblacional = var_acc / n (xmm1 aun tiene 'n' en float)
     movss   [r15], xmm2    ; Guardar varianza
     movss   [rbx], xmm3    ; Guardar minimo
@@ -129,7 +129,7 @@ compute_stats:
     jmp     .epilogue
 
 .handle_zero:
-    ; Si n == 0, escribimos 0.0 en todas las direcciones
+                    ;Si n == 0, escribimos 0.0 en todas las direcciones
     xorps   xmm0, xmm0
     movss   [rdx], xmm0
     movss   [rcx], xmm0
@@ -137,7 +137,7 @@ compute_stats:
     movss   [r9], xmm0
 
 .epilogue:
-    ; 5) Restaurar registros callee-saved y retornar
+                    ; Restaurar registros callee-saved y retornar
     pop     r15
     pop     r14
     pop     r13
@@ -163,17 +163,18 @@ compute_stats:
 ;
 ;; void normalize_array(const float *in, float *out, int n, float mean, float stddev)
 ; rdi = in, rsi = out, edx = n, xmm0 = mean, xmm1 = stddev
+
 normalize_array:
-    ; Verificación de seguridad: si n <= 0, salir directamente
+                    ;Verificación de seguridad: si n <= 0, salir directamente
     cmp     edx, 0
     jle     .norm_end
 
-    ; Caso borde: verificar si stddev == 0.0
+                    ; Caso borde: verificar si stddev == 0.0
     xorps   xmm2, xmm2     ; xmm2 = 0.0
     comiss  xmm1, xmm2     ; Comparamos stddev (xmm1) con 0.0 (xmm2)
     je      .stddev_zero   ; Si es cero, saltamos a la rutina especial
 
-    ; Bucle principal de normalizacion
+                    ; Bucle principal de normalizacion
     xor     eax, eax       ; eax = indice i = 0
 
 .norm_loop:
@@ -189,7 +190,7 @@ normalize_array:
     jmp     .norm_loop
 
 .stddev_zero:
-    ; Bucle alterno: si stddev == 0.0, copiar in[i] a out[i] tal cual
+                    ; Bucle alterno: si stddev == 0.0, copiar in[i] a out[i] tal cual
     xor     eax, eax       ; eax = i = 0
 
 .zero_loop:
