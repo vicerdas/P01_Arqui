@@ -44,14 +44,14 @@ sum_array:
     jmp     .sum_vec_loop
 
 .sum_reduce:
-    ; --- reduccion horizontal: 8 carriles de ymm0 -> un escalar ---
+    ; reduccion horizontal: 8 carriles de ymm0 a  un escalar 
     vextractf128 xmm2, ymm0, 1     ; xmm2 = mitad alta (carriles 4-7)
     vaddps  xmm0, xmm0, xmm2       ; xmm0 = 4 sumas parciales (carriles 0-3 + 4-7)
     vhaddps xmm0, xmm0, xmm0       ; suma horizontal dentro de 128 bits
     vhaddps xmm0, xmm0, xmm0       ; xmm0[0] = suma total de los 8 carriles originales
 
 .sum_scalar_tail:
-    ; --- elementos sobrantes (n % 8), uno a la vez ---
+    ; elementos sobrantes (n % 8), uno a la vez 
     cmp     eax, esi
     jge     .sum_done
     vmovss  xmm1, [rdi + rax*4]
@@ -166,7 +166,7 @@ compute_stats:
     vhaddps xmm2, xmm2, xmm2
     vhaddps xmm2, xmm2, xmm2        ; xmm2[0] = suma total de cuadrados
 
-    ;  reduccion horizontal del minimo (8 carriles -> 1) 
+    ;  reduccion horizontal del minimo (8 carriles a 1) 
     vextractf128 xmm7, ymm3, 1
     vminps  xmm3, xmm3, xmm7        ; 4 minimos parciales
     vshufps xmm7, xmm3, xmm3, 0xEE
@@ -239,7 +239,7 @@ normalize_array:
 
     vxorps  xmm4, xmm4, xmm4
     vucomiss xmm1, xmm4             ; compara stddev contra 0.0
-    je      .na_copy                ; si stddev == 0.0 -> copiar tal cual
+    je      .na_copy                ; si stddev == 0.0 entonces se  copia tal cual
 
     mov     ecx, edx
     and     ecx, ~7                 ; ecx = n redondeado hacia abajo, multiplo de 8
