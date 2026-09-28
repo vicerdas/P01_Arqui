@@ -82,7 +82,8 @@ static void write_output(const char *path, const float *arr, int n) {
  * tenga que parsear el binario de salida). */
 static void write_stats_summary(const char *path, int n, float sum,
                                  float mean, float var, float stddev,
-                                 float min, float max, double ms) {
+                                 float min, float max, double ms,
+                                 double ms_stddev) {
     FILE *f = fopen(path, "w");
     if (!f) {
         fprintf(stderr, "Aviso: no se pudo crear el resumen '%s'\n", path);
@@ -96,6 +97,7 @@ static void write_stats_summary(const char *path, int n, float sum,
     fprintf(f, "min=%.9g\n", min);
     fprintf(f, "max=%.9g\n", max);
     fprintf(f, "kernel_ms=%.6f\n", ms);
+    fprintf(f, "kernel_ms_stddev=%.6f\n", ms_stddev);
     fclose(f);
 }
 
@@ -126,6 +128,7 @@ int main(int argc, char **argv) {
 
     float sum = 0.0f, mean = 0.0f, var = 0.0f, min = 0.0f, max = 0.0f;
     double total_ms = 0.0;
+    double total_ms_sq = 0.0;   /* suma de cuadrados, para la desv. estandar */
     struct timespec t0, t1;
 
     /* --- Seccion medida: sum_array + compute_stats + normalize_array --- */
@@ -138,9 +141,15 @@ int main(int argc, char **argv) {
         normalize_array(in, out, n, mean, stddev_r);
 
         clock_gettime(CLOCK_MONOTONIC, &t1);
-        total_ms += elapsed_ms(t0, t1);
+        double ms_r = elapsed_ms(t0, t1);
+        total_ms += ms_r;
+        total_ms_sq += ms_r * ms_r;
     }
     double avg_ms = total_ms / reps;
+    /* Var(X) = E[X^2] - (E[X])^2, formula estandar de varianza muestral */
+    double var_ms = (total_ms_sq / reps) - (avg_ms * avg_ms);
+    if (var_ms < 0.0) var_ms = 0.0; /* proteccion ante error de redondeo */
+    double stddev_ms = sqrt(var_ms);
     float stddev = sqrtf(var);
 
     printf("N        = %d\n", n);
@@ -150,13 +159,15 @@ int main(int argc, char **argv) {
     printf("StdDev   = %.6f\n", stddev);
     printf("Minimo   = %.6f\n", min);
     printf("Maximo   = %.6f\n", max);
-    printf("Tiempo promedio del kernel (%d rep.): %.6f ms\n", reps, avg_ms);
+    printf("Tiempo promedio del kernel (%d rep.): %.6f ms (+/- %.6f ms)\n",
+           reps, avg_ms, stddev_ms);
 
     write_output(output_path, out, n);
 
     char summary_path[1024];
     snprintf(summary_path, sizeof(summary_path), "%s.stats.txt", output_path);
-    write_stats_summary(summary_path, n, sum, mean, var, stddev, min, max, avg_ms);
+    write_stats_summary(summary_path, n, sum, mean, var, stddev, min, max,
+                         avg_ms, stddev_ms);
 
     free(in);
     free(out);
