@@ -2,8 +2,8 @@
 import subprocess, csv
 import matplotlib.pyplot as plt
 
-# 4 tamanos grandes obligatorios segun el instructivo (seccion 2.2),
-# mas algunos chicos extra para ver el comportamiento a baja escala.
+# 4 tamanos grandes obligatorios 
+# mas algunos pequeno extra para ver el comportamiento a baja escala.
 sizes = [100, 1000, 10000, 100000, 1000000, 10000000, 50000000]
 reps = 30
 rows = []
