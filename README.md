@@ -14,18 +14,26 @@ en la vectorial.
 .
 ├── Makefile
 ├── include/
-│   └── stats.h                # Firmas compartidas por ambas versiones
+│   └── stats.h                                # Firmas compartidas por ambas versiones
 ├── src/
-│   └── driver.c                # Programa principal (E/S, timing, impresion)
+│   └── driver.c                               # Programa principal (E/S, timing, impresion)
 ├── asm/
 │   ├── scalar/
-│   │   └── stats_scalar.asm    # Version escalar (SSE escalar)
+│   │   └── stats_scalar.asm                   # Version escalar (SSE escalar)
 │   └── vector/
-│       └── stats_vector.asm    # Version vectorial (AVX2)
+│       └── stats_vector.asm                   # Version vectorial (AVX2)
 ├── tools/
-│   ├── gen_input.py            # Genera archivos de entrada de prueba
-│   └── verify_reference.py     # Verifica resultados contra referencia en Python puro
-└── data/                        # Se crea al compilar: entradas/salidas .dat
+│   ├── gen_input.py                           # Genera archivos de entrada de prueba
+│   └── verify_reference.py                    # Verifica resultados contra referencia en Python puro
+├── data/                                      # Entradas y salidas generadas (.dat y .stats.txt)
+└── Docs/                                      # Documentación gráfica y complementaria
+    ├── Diagrama de bloques de la arquitectura de software.pdf
+    ├── Diagrama de flujo de control_AVX2.pdf
+    ├── Diagrama de flujo de control_scalar.pdf
+    ├── Diagrama de memoria.pdf
+    ├── Tablas de Asignacion de Registros (scalar).pdf
+    ├── Tablas de Asignacion de Registros AVX2.pdf
+    └── informe.pdf                            # Informe técnico final del proyecto
 ```
 
 ## Requisitos
